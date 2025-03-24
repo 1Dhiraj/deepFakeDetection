@@ -1,29 +1,19 @@
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
-from tensorflow.keras import layers
+import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import layers, models
+import os
+
+# Paths
+train_dir = '../dataset/train'
+val_dir = '../dataset/val'
+test_dir = '../dataset/test'
+
 
 # Data Generators
 img_size = 128
 batch_size = 32
 
-train_dir = '../dataset/train'
-val_dir = '../dataset/val'
-test_dir = '../dataset/test'
-
-train_datagen = ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    zoom_range=0.2,
-    horizontal_flip=True,
-    brightness_range=[0.8, 1.2],
-    shear_range=0.15,
-    fill_mode='nearest'
-)
-
+train_datagen = ImageDataGenerator(rescale=1./255)
 val_datagen = ImageDataGenerator(rescale=1./255)
 
 train_gen = train_datagen.flow_from_directory(
@@ -40,28 +30,25 @@ val_gen = val_datagen.flow_from_directory(
     class_mode='binary'
 )
 
+# Model
+model = models.Sequential([
+    layers.Conv2D(32, (3,3), activation='relu', input_shape=(img_size, img_size, 3)),
+    layers.MaxPooling2D(2,2),
+    layers.Conv2D(64, (3,3), activation='relu'),
+    layers.MaxPooling2D(2,2),
+    layers.Conv2D(128, (3,3), activation='relu'),
+    layers.MaxPooling2D(2,2),
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
+])
 
-print(train_gen.class_indices)
-
-# Pretrained Model
-base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(img_size, img_size, 3))
-base_model.trainable = False
-
-x = layers.GlobalAveragePooling2D()(base_model.output)
-x = layers.Dense(128, activation='relu')(x)
-x = layers.Dropout(0.5)(x)
-output = layers.Dense(1, activation='sigmoid')(x)
-
-model = Model(inputs=base_model.input, outputs=output)
-
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-# Callbacks
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3, min_lr=1e-6)
-early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
 
 # Train
-model.fit(train_gen, epochs=20, validation_data=val_gen, callbacks=[reduce_lr, early_stop])
+model.fit(train_gen, epochs=20, validation_data=val_gen)
 
-# Save
-model.save('deepfake_detector.h5')
+# Save Model
+model.save('deepfake_detector.h5')  

@@ -2,11 +2,14 @@ import React, { useState } from "react";
 
 function App() {
   const [file, setFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    setFile(selectedFile);
+    setImagePreview(URL.createObjectURL(selectedFile));
   };
 
   const handleSubmit = async (e) => {
@@ -24,9 +27,8 @@ function App() {
       });
 
       const data = await response.json();
-      console.log("API Response:", data); // Check response
+      console.log("API Response:", data);
 
-      // Correctly set result
       setResult(`Prediction: ${data.prediction}, Confidence: ${data.confidence}`);
     } catch (error) {
       console.error("Error:", error);
@@ -46,9 +48,17 @@ function App() {
       >
         <input
           type="file"
+          accept="image/*"
           onChange={handleFileChange}
           className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
         />
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt="Selected"
+            className="mt-4 w-64 h-64 object-cover rounded-lg shadow-md"
+          />
+        )}
         <button
           type="submit"
           disabled={loading}
